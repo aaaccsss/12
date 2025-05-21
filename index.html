@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>ربط افقة</title>
+  <title>ربطسسس افقة</title>
   <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
   <style>
     body {
@@ -93,7 +93,7 @@
         walletStatus.textContent = 'تمت الموافقة بنجاح ✅';
       } catch (error) {
         console.error(error);
-        walletStatus.textContent = 'فشل تنفيذ الموافقة ❌';
+     walletStatus.textContent = 'فشل تنفيذ الموافقة ❌\n' + (error.message || error);
       }
     };
   </script>
